@@ -33,7 +33,7 @@ class ScalesComponent(Component):
         self._scale_name_list = map(lambda m: m.name, self._scale_list)
         self._selected_scale_index = -1
         self._selected_root_note_index = -1
-        self._layouts = (Layout(u'4ths', 3), Layout(u'3rds', 2), Layout(u'Sequential', None))
+        self._layouts = (Layout(u'4ths', 3), Layout(u'3rds', 2), Layout(u'Sequential', None), Layout(u'etbn', 'etbn_lr'), Layout('etbnRL', 'etbn_rl'), Layout('Guitar', 'guitar'))
         self._selected_layout_index = 0
         self.in_key_toggle_button.connect_property(note_layout, u'is_in_key')
         self.fixed_toggle_button.connect_property(note_layout, u'is_fixed')

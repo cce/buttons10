@@ -2,17 +2,41 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from contextlib import contextmanager
 from itertools import ifilter
-from ableton.v2.base import EventObject, index_if, listenable_property, listens, liveobj_valid, find_if, task
+from ableton.v2.base import EventObject, index_if, listenable_property, listens, liveobj_valid, find_if, task, NamedTuple
 from ableton.v2.control_surface import CompoundComponent, defaults
 from ableton.v2.control_surface.control import ButtonControl, control_matrix, PlayableControl
 from ableton.v2.control_surface.components import PlayableComponent, Slideable, SlideComponent
 from . import consts
-from .melodic_pattern import SCALES, MelodicPattern, pitch_index_to_string
+from .melodic_pattern import SCALES, MelodicPattern, pitch_index_to_string, log
 from .message_box_component import Messenger
 from .note_editor_component import DEFAULT_START_NOTE
 from .pad_control import PadControl
 from .slideable_touch_strip_component import SlideableTouchStripComponent
+from . import Trombone, Guitar
 DEFAULT_SCALE = SCALES[0]
+
+class CustomPatternLoader(NamedTuple):
+    """ custom pattern factory """
+    def load(self):
+        try:
+            if not self.module:
+                self.module = __import__(self.module_name)
+            #reload(self.module) # dev auto-reload
+        except Exception:
+            log.exception("_get_pattern exception loading %r, still running %r", self.module.__name__, getattr(self.module, 'VERSION', None))
+        else:
+            log.info("_get_pattern loaded %r %r", self.module.__name__, getattr(self.module, 'VERSION', None))
+
+    def impl(self, *args, **kw):
+        """ create pattern class """
+        self.load()
+        return getattr(self.module, self.cls)(*args, **kw)
+
+CUSTOM_PATTERNS = {
+    'etbn_lr': CustomPatternLoader(module=Trombone, cls='TrombonePattern', direction='lr'),
+    'etbn_rl': CustomPatternLoader(module=Trombone, cls='TrombonePattern', direction='rl'),
+    'guitar': CustomPatternLoader(module=Guitar, cls='GuitarPattern', direction='rl')
+}
 
 class NoteLayout(EventObject):
 
@@ -360,7 +384,9 @@ class InstrumentComponent(PlayableComponent, CompoundComponent, Slideable, Messe
         height = None
         octave = first_note / self.page_length
         offset = first_note % self.page_length - self._first_scale_note_offset()
-        if interval == None:
+        if interval in CUSTOM_PATTERNS:
+            interval = 8
+        elif interval == None:
             if self._note_layout.is_in_key:
                 interval = len(self._note_layout.notes)
                 if self._note_layout.is_horizontal:
@@ -384,7 +410,18 @@ class InstrumentComponent(PlayableComponent, CompoundComponent, Slideable, Messe
         else:
             steps = [interval, 1]
             origin = [0, offset]
-        return MelodicPattern(steps=steps, scale=notes, origin=origin, root_note=octave * 12, chromatic_mode=not self._note_layout.is_in_key, width=width, height=height)
+        log.info("_get_pattern(%r) interval=%r notes=%r pagelen=%r octave=%r, offset=%r is_fixed=%r nlinterval=%r steps=%r origin=%r base_note=%r is_in_key=%r width=%r height %r",
+                 first_note, interval, notes, self.page_length, octave, offset, self._note_layout.is_fixed, self._note_layout.interval, steps, origin, octave*12, self._note_layout.is_in_key, width, height)
+        custom_pattern = CUSTOM_PATTERNS.get(self._note_layout.interval)
+        if custom_pattern:
+            return custom_pattern.impl(
+                first_note=first_note,
+                steps=steps, scale=notes, origin=origin, octave=octave,
+                is_diatonic=self._note_layout.is_in_key,
+                is_absolute=self._note_layout.is_fixed,
+                direction=custom_pattern.direction)
+        else:
+            return MelodicPattern(steps=steps, scale=notes, origin=origin, root_note=octave * 12, chromatic_mode=not self._note_layout.is_in_key, width=width, height=height)
 
     def _update_aftertouch(self):
         if self.is_enabled() and self._aftertouch_control != None:

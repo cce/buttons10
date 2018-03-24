@@ -1,5 +1,5 @@
-from _Framework.Util import NamedTuple
-from MelodicPattern import NoteInfo, log
+from ableton.v2.base import NamedTuple
+from .melodic_pattern import NoteInfo, log
 import os, time
 VERSION = "1-" + time.strftime('%Y-%m-%d-%H:%M:%S', time.gmtime(os.path.getmtime(os.path.abspath(__file__))))
 
@@ -50,7 +50,7 @@ class TrombonePattern(NamedTuple):
         if (index % 12) == (self.scale[0] % 12):
             color = 'NoteBase'
         elif (index % 12) == ((self.scale[0] + 7) % 12):
-            color = 'NoteFifth'
+            color = 'NoteScale' # 'NoteFifth'
         elif not self.is_diatonic or (index % 12) in ((i % 12) for i in self.scale):
             color = 'NoteScale'
         else:

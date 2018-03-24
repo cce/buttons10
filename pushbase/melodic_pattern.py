@@ -3,6 +3,13 @@ from __future__ import absolute_import, print_function, unicode_literals
 from ableton.v2.base import NamedTuple, lazy_attribute, memoize, find_if
 from . import consts
 from .matrix_maps import FEEDBACK_CHANNELS
+import logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename='/Users/cce/push/MelodicPattern10.log',
+    format='%(asctime)s %(process)d %(name)s %(levelname)s %(message)s',
+)
+log = logging.getLogger(__name__)
 CIRCLE_OF_FIFTHS = tuple([ 7 * k % 12 for k in range(12) ])
 ROOT_NOTES = CIRCLE_OF_FIFTHS[0:6] + CIRCLE_OF_FIFTHS[-1:5:-1]
 NOTE_NAMES = (u'C', u'D\u266d', u'D', u'E\u266d', u'E', u'F', u'G\u266d', u'G', u'A\u266d', u'A', u'B\u266d', u'B')
@@ -203,6 +210,9 @@ class NoteInfo(NamedTuple):
     index = None
     channel = 0
     color = u'NoteInvalid'
+    def __str__(self):
+        return ("NoteInfo(index=%r, channel=%r, color=%r)" %
+                (self.index, self.channel, self.color))
 
 
 class MelodicPattern(NamedTuple):
